@@ -58,5 +58,47 @@ class CvTest extends UnitSpec {
     assert( resultArray2.eq(resultArray3) )
   }
 
+  it should "extract byte array from mat correctly" in {
+
+    val c = 3
+    val w = 300
+    val h = 300
+
+    val b = 156
+    val g = 243
+    val r = 103
+
+    val size = w * h * c
+    val expectedArray = new Array[Byte](size)
+    for( i <- 0 until size) {
+      expectedArray(i) = i % 3 match {
+        case 0 => b.toByte
+        case 1 => g.toByte
+        case 2 => r.toByte
+      }
+    }
+
+    val mat =
+      new Mat(
+        new Size(w, h),
+        cvCore.CV_8UC3,
+        new Scalar(b, g, r, 0)
+      )
+
+
+    val resultArray = CvUtils.extractMatData(mat)
+
+    val resultArray2 = new Array[Byte](size)
+    val resultArray3 = CvUtils.extractMatData(mat, resultArray2)
+
+
+//    println("arr1:" + resultArray.mkString(","))
+//    println("arr2:" + expectedArray.mkString(","))
+
+    assert( resultArray.sameElements(expectedArray) )
+    assert( resultArray2.sameElements(expectedArray) )
+    assert( resultArray2.eq(resultArray3) )
+  }
+
 
 }
