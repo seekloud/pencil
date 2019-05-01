@@ -34,7 +34,6 @@ class CvTest extends UnitSpec {
       }
     }
 
-
     val mat =
       new Mat(
         new Size(w, h),
@@ -45,21 +44,18 @@ class CvTest extends UnitSpec {
     val converter = new OpenCVFrameConverter.ToMat()
     val frame = converter.convert(mat)
 
-
     val resultArray = CvUtils.extractImageData(frame)
 
-    def checkArrayEqual(arr1: Array[Byte], arr2: Array[Byte]) = {
-      if(arr1.length == arr2.length) {
-        arr1.zip(arr2).forall{case (b1, b2) => b1 == b2}
-      } else false
-    }
+    val resultArray2 = new Array[Byte](size)
+    val resultArray3 = CvUtils.extractImageData(frame, resultArray2)
+
 
 //    println("arr1:" + resultArray.mkString(","))
 //    println("arr2:" + expectedArray.mkString(","))
 
-    assert(checkArrayEqual(resultArray, expectedArray))
-
-
+    assert( resultArray.sameElements(expectedArray) )
+    assert( resultArray2.sameElements(expectedArray) )
+    assert( resultArray2.eq(resultArray3) )
   }
 
 

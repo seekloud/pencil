@@ -11,28 +11,24 @@ import org.bytedeco.javacv.Frame
   */
 object CvUtils {
 
-
-  def extractImageData(frame: Frame): Array[Byte] = {
-
+  def extractImageData(frame: Frame, dstArray: Array[Byte] = null): Array[Byte] = {
     val w = frame.imageWidth
     val h = frame.imageHeight
     val c = frame.imageChannels
-
     val size = w * h * c
+
+    val arr =
+      if (dstArray == null) {
+        new Array[Byte](size)
+      } else {
+        assert(size == dstArray.length)
+        dstArray
+      }
 
     val buff = frame.image(0).asInstanceOf[ByteBuffer]
     buff.rewind()
-
-    val arr = new Array[Byte](size)
     buff.get(arr)
     arr
-
-
-  }
-
-
-  def frameImage2Data(frame: Frame) = {
-
   }
 
 }
