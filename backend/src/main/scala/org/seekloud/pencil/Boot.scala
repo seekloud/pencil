@@ -8,7 +8,12 @@ package org.seekloud.pencil
 object Boot {
 
   def main(args: Array[String]): Unit = {
-    println("hello world.")
+    //println("hello world.")
+
+
+    val b = 192.toByte
+    println(b)
+
   }
 
 }

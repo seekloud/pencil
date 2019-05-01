@@ -11,7 +11,6 @@ resolvers += Resolver.sonatypeRepo("snapshots")
 shellPrompt in ThisBuild := { state => "sbt:" + Project.extract(state).currentRef.project + "> " }
 
 
-
 val projectMainClass = "org.seekloud.pencil.Boot"
 
 def commonSettings = Seq(
@@ -23,7 +22,6 @@ def commonSettings = Seq(
   ),
   javacOptions ++= Seq("-encoding", "UTF-8"),
   // add a JVM option to use when forking a JVM for 'run'
-  javaOptions += "-Xmx2G",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-Xlint")
 )
 
@@ -94,6 +92,7 @@ lazy val backend = (project in file("backend")).enablePlugins(PackPlugin)
   .settings(
     libraryDependencies ++= Dependencies.backendDependencies,
     libraryDependencies ++= Dependencies.bytedecoLibs,
+    libraryDependencies ++= Dependencies.testLibs,
   )
   .settings {
     (resourceGenerators in Compile) += Def.task {

@@ -90,5 +90,10 @@ object Dependencies {
   ) ++ bytedecoPresetLibs
 
 
+  val testLibs = Seq(
+    "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
+    "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaV % "test",
+    "org.scalatest" %% "scalatest" % "3.0.7" % "test"
+  )
 
 }
