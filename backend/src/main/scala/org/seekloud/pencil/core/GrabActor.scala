@@ -3,6 +3,7 @@ package org.seekloud.pencil.core
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior, DispatcherSelector, PostStop, Props, Signal, SupervisorStrategy}
 import org.bytedeco.javacv.{FFmpegFrameGrabber, Frame}
+import org.seekloud.pencil.Boot
 import org.seekloud.pencil.core.GrabActor.{GrabCommand, GrabEvent}
 
 import scala.util.{Failure, Success, Try}
@@ -24,9 +25,9 @@ object GrabActor {
 
   sealed trait GrabCommand
 
-  final object StopGrab extends GrabCommand
+  final object StopGrab extends GrabCommand with WorkerCommand
 
-  private final case class GrabThreadDead(code: Int, message: String = "") extends GrabCommand
+  private final object GrabWorkerStopped extends GrabCommand
 
 
   sealed trait GrabEvent
@@ -34,6 +35,10 @@ object GrabActor {
   final case class GrabError(actorName: String, msg: String, ex: Throwable) extends GrabEvent
 
   final case class GrabFinish(actorName: String) extends GrabEvent
+
+  sealed trait WorkerCommand
+
+  private final object NextGrab extends WorkerCommand
 
   final case class GrabInformation(
     actorName: String,
@@ -54,58 +59,62 @@ object GrabActor {
     targetPath: String,
     parent: ActorRef[GrabCommand],
     frameCollector: ActorRef[GrabEvent]
-  ): Behavior[Nothing] =
+  ): Behavior[WorkerCommand] =
     Behaviors.setup { context =>
 
       val grabber = new FFmpegFrameGrabber(targetPath)
       val parentName = parent.path.name
       val log = context.log
 
-      Behaviors.receiveMessage[Nothing] { _ =>
-        Try(grabber.start()) match {
-          case Success(_) =>
-            val info = GrabInformation(
-              parentName,
-              grabber.getImageWidth,
-              grabber.getImageHeight,
-              grabber.getPixelFormat,
-              grabber.getVideoFrameRate,
-              grabber.getVideoCodec,
-              grabber.getVideoBitrate,
-              grabber.getAudioChannels,
-              grabber.getAudioCodec
-            )
+      Try(grabber.start()) match {
+        case Success(_) =>
+          val info = GrabInformation(
+            parentName,
+            grabber.getImageWidth,
+            grabber.getImageHeight,
+            grabber.getPixelFormat,
+            grabber.getVideoFrameRate,
+            grabber.getVideoCodec,
+            grabber.getVideoBitrate,
+            grabber.getAudioChannels,
+            grabber.getAudioCodec
+          )
 
-            parent ! info
-            frameCollector ! info
+          parent ! info
+          frameCollector ! info
+          context.self ! NextGrab
+        case Failure(ex) =>
+          frameCollector ! GrabError(parentName, s"can not start grab: $targetPath", ex)
+          context.self ! StopGrab
+      }
 
-            var count = 0
-            var grabTs = System.currentTimeMillis()
-            Try{
-              var frame = grabber.grab()
-              while (frame != null) {
-                val msg = GrabbedFrame(parentName, count, grabTs, frame)
-                frameCollector ! msg
-                count += 1
-                grabTs = System.currentTimeMillis()
-                frame = grabber.grab()
-              }
-            } match {
-              case Success(_) =>
+      var count = 0
+
+      Behaviors.receiveMessage[WorkerCommand] { msg =>
+        context.self ! NextGrab
+        msg match {
+          case NextGrab =>
+            count += 1
+            val grabTs = System.currentTimeMillis()
+            Try(grabber.grab()) match {
+              case Success(null) =>
                 frameCollector ! GrabFinish(parentName)
-                Behaviors.stopped
+                context.self ! StopGrab
+                Behaviors.same
+              case Success(frame) =>
+                frameCollector ! GrabbedFrame(parentName, count, grabTs, frame)
+                Behaviors.same
               case Failure(ex) =>
                 frameCollector ! GrabError(parentName, "grab error", ex)
                 Behaviors.stopped
             }
-          case Failure(ex) =>
-            frameCollector ! GrabError(parentName, s"can not start grab: $targetPath", ex)
+          case StopGrab =>
+            frameCollector ! GrabFinish(parentName)
             Behaviors.stopped
         }
-
       }.receiveSignal {
         case (_, PostStop) =>
-          Try(grabber.close()).failed.map{ex =>
+          Try(grabber.close()).failed.map { ex =>
             ex.printStackTrace()
             log.warning("GrabActor.worker grab close error:{}", ex.getMessage)
           }
@@ -127,68 +136,14 @@ class GrabActor(
 
   private val log = context.log
   private val name = context.self.path.name
-  private val self = context.self
   private var grabInfo: Option[GrabInformation] = None
 
-  //TODO tmp test
-  //  val worker = context.spawn(GrabActor.worker(), "aa", DispatcherSelector.fromConfig(""))
-  //  val worker1 = context.spawn(GrabActor.worker(), "aa")
+  private val worker = context.spawn(
+    GrabActor.worker(targetPath, context.self, frameCollector),
+    "worker",
+    Boot.blockingDispatcher)
 
-  val grabThread = new Thread(() => {
-    val grabber = new FFmpegFrameGrabber(targetPath)
-
-    Try(grabber.start()) match {
-      case Failure(ex) =>
-        ex.printStackTrace()
-        val msg = s"GrabActor[$name] can't start grabber for [$targetPath]"
-        context.self ! GrabThreadDead(1, msg)
-        frameCollector ! GrabError(name, s"can not start grab: $targetPath", ex)
-      case Success(_) =>
-        Try {
-          var count = 0
-          var grabTs = System.currentTimeMillis()
-
-          val info = GrabInformation(
-            name,
-            grabber.getImageWidth,
-            grabber.getImageHeight,
-            grabber.getPixelFormat,
-            grabber.getVideoFrameRate,
-            grabber.getVideoCodec,
-            grabber.getVideoBitrate,
-            grabber.getAudioChannels,
-            grabber.getAudioCodec
-          )
-          self ! info
-          frameCollector ! info
-          var frame = grabber.grab()
-          while (!Thread.interrupted() && frame != null) {
-            val msg = GrabbedFrame(name, count, grabTs, frame)
-            frameCollector ! msg
-            count += 1
-            grabTs = System.currentTimeMillis()
-            frame = grabber.grab()
-          }
-          if (frame == null) {
-            context.self ! GrabThreadDead(0)
-            frameCollector ! GrabFinish(name)
-          }
-        }.failed.map { ex =>
-          ex.printStackTrace()
-          val msg = s"GrabActor[$name] grab error [${ex.getMessage}]"
-          context.self ! GrabThreadDead(2, msg)
-          frameCollector ! GrabError(name, "grab error", ex)
-        }
-
-        Try(grabber.close()).failed.map { ex =>
-          ex.printStackTrace()
-          GrabThreadDead(1, ex.getMessage)
-        }
-
-    }
-  })
-
-  grabThread.start()
+  context.watchWith(worker, GrabWorkerStopped)
 
   override def onMessage(msg: GrabCommand): Behavior[GrabCommand] = {
     msg match {
@@ -196,21 +151,17 @@ class GrabActor(
         grabInfo = Some(info)
         this
       case StopGrab =>
-        grabThread.interrupt()
+        //TODO Kill worker.
+        context.stop(worker)
         Behaviors.stopped
-      case GrabThreadDead(code, message) =>
-        if (code != 0) {
-          log.warning(message)
-        }
+      case GrabWorkerStopped =>
+
         Behaviors.stopped
     }
   }
 
   override def onSignal: PartialFunction[Signal, Behavior[GrabCommand]] = {
     case PostStop =>
-      if (!grabThread.isInterrupted) {
-        grabThread.interrupt()
-      }
       log.info(s"grabActor[{}] stopped", name)
       this
   }
