@@ -2,6 +2,7 @@ package org.seekloud.pencil.core
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors, TimerScheduler}
 import akka.actor.typed.{Behavior, PostStop, Signal}
+import org.bytedeco.ffmpeg.avutil.AVFrame
 import org.bytedeco.ffmpeg.global.{avcodec => FFmpegAvCodec}
 import org.bytedeco.ffmpeg.global.{avutil => FFmpegAvUtil}
 import org.bytedeco.javacv.{FFmpegFrameRecorder, Frame}
@@ -21,13 +22,26 @@ object RecordActor {
 
   def apply(
     path: String,
+    width: Int,
+    height: Int,
+    audioChannels: Int,
     pixelFormat: Int = FFmpegAvUtil.AV_PIX_FMT_BGR24,
     frameRate: Int = 30,
     videoBitrate: Int = 1500000,
     videoCodec: Int = FFmpegAvCodec.AV_CODEC_ID_H264
   ): Behavior[RecordCommand] = Behaviors.setup[RecordCommand] { context =>
     Behaviors.withTimers { timers =>
-      new RecordActor(context, timers, path, pixelFormat, frameRate, videoBitrate, videoCodec)
+      new RecordActor(
+        context,
+        timers,
+        path,
+        width,
+        height,
+        audioChannels,
+        pixelFormat,
+        frameRate,
+        videoBitrate,
+        videoCodec)
     }
   }
 
@@ -47,8 +61,11 @@ class RecordActor(
   context: ActorContext[RecordCommand],
   timers: TimerScheduler[RecordCommand],
   path: String,
+  width: Int,
+  height: Int,
+  audioChannels: Int,
   pixelFormat: Int,
-  frameRate: Int = 30,
+  frameRate: Double = 30.0,
   videoBitrate: Int = 1500000,
   videoCodec: Int = FFmpegAvCodec.AV_CODEC_ID_H264
 ) extends AbstractBehavior[RecordCommand] {
@@ -67,11 +84,10 @@ class RecordActor(
 
   private val recordThread = new Thread(() => {
 
-    val recorder = new FFmpegFrameRecorder(path)
+    val recorder = new FFmpegFrameRecorder(path, width, height, audioChannels)
     recorder.setFrameRate(frameRate)
     recorder.setVideoCodec(videoCodec)
     recorder.setVideoBitrate(videoBitrate)
-
     recorder.start()
 
     while (!Thread.interrupted()) {
@@ -84,6 +100,14 @@ class RecordActor(
           case None => recordFrame.originalFrame
         }
         val audioFrame = recordFrame.originalFrame
+
+
+//        val pixelFormat0 = imageFrame.opaque match {
+//          case frame: AVFrame =>
+//            frame.format()
+//          case _ =>
+//            FFmpegAvUtil.AV_PIX_FMT_NONE
+//        }
 
         if (imageFrame.image != null) {
           recorder.recordImage(
