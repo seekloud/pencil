@@ -103,6 +103,7 @@ object GrabActor {
                 Behaviors.same
               case Success(frame) =>
                 frameCollector ! GrabbedFrame(parentName, count, grabTs, frame)
+                context.self ! NextGrab
                 Behaviors.same
               case Failure(ex) =>
                 frameCollector ! GrabError(parentName, "grab error", ex)
@@ -151,8 +152,7 @@ class GrabActor(
         grabInfo = Some(info)
         this
       case StopGrab =>
-        //TODO Kill worker.
-        context.stop(worker)
+        worker ! StopGrab
         Behaviors.stopped
       case GrabWorkerStopped =>
 
