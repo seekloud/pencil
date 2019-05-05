@@ -1,9 +1,13 @@
 package org.seekloud.pencil.common
 
+import java.io.File
 import java.nio.ByteBuffer
 
+import opencv_cookbook.OpenCVUtils
 import org.bytedeco.javacv.Frame
-import org.bytedeco.opencv.opencv_core.Mat
+import org.bytedeco.opencv.opencv_core.{Mat, Point, Scalar, Size}
+import org.bytedeco.opencv.global.{opencv_imgproc => OpenCvImgProc}
+import org.bytedeco.opencv.opencv_core
 
 /**
   * Author: Tao Zhang
@@ -49,6 +53,86 @@ object CvUtils {
     buff.rewind()
     buff.get(arr)
     arr
+  }
+
+  def resize(srcImg: Mat, dstImg: Mat, dstWidth: Int, dstHeight: Int): Unit = {
+    val dSize = new Size(dstWidth, dstHeight)
+    OpenCvImgProc.resize(srcImg, dstImg, dSize)
+  }
+
+
+  def drawRectangle(
+    img: Mat,
+    x: Int,
+    y: Int,
+    w: Int,
+    h: Int,
+    color: (Int, Int, Int),
+    thickness: Int = 2
+  ): Unit = {
+
+    val lineType = OpenCvImgProc.LINE_AA
+
+    val r = color._1
+    val g = color._2
+    val b = color._3
+
+    OpenCvImgProc.rectangle(
+      img,
+      new Point(x, y),
+      new Point(x + w, y + h),
+      new Scalar(b, g, r, 0),
+      thickness,
+      lineType,
+      0
+    )
+
+  }
+
+
+  def putText(
+    img: Mat,
+    text: String,
+    x: Int,
+    y: Int,
+    size: Int,
+    color: (Int, Int, Int),
+    fontScale: Double = 1.0,
+    thickness: Int = 2,
+  ): Unit = {
+
+    val lineType = OpenCvImgProc.LINE_AA
+
+    OpenCvImgProc.putText(
+      img,
+      text,
+      new Point(x, y),
+      OpenCvImgProc.FONT_HERSHEY_COMPLEX,
+      fontScale,
+      new Scalar(color._3, color._2, color._1, 0),
+      thickness,
+      lineType,
+      false
+    )
+  }
+
+
+  def main(args: Array[String]): Unit = {
+    testResize()
+  }
+
+
+  def testDrawRectangle(): Unit = {
+    val img = OpenCVUtils.loadAndShowOrExit(new File("data/image/image01.jpg"))
+    drawRectangle(img, 100, 100, 300, 300, (0, 255, 0))
+    OpenCVUtils.show(img, "testDrawRectangle")
+  }
+
+  def testResize(): Unit = {
+    val img = OpenCVUtils.loadAndShowOrExit(new File("data/image/image01.jpg"))
+    val dstImg = new Mat()
+    resize(img, dstImg, 400, 300)
+    OpenCVUtils.show(dstImg, "testResize")
   }
 
 }
