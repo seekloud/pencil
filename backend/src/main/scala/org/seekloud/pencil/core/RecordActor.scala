@@ -2,15 +2,13 @@ package org.seekloud.pencil.core
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors, TimerScheduler}
 import akka.actor.typed.{Behavior, PostStop, Signal}
-import org.bytedeco.ffmpeg.avutil.AVFrame
-import org.bytedeco.ffmpeg.global.{avcodec => FFmpegAvCodec}
-import org.bytedeco.ffmpeg.global.{avutil => FFmpegAvUtil}
+import org.bytedeco.ffmpeg.global.{avcodec => FFmpegAvCodec, avutil => FFmpegAvUtil}
 import org.bytedeco.javacv.{FFmpegFrameRecorder, Frame}
 import org.seekloud.pencil.core.RecordActor.RecordCommand
 
+import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
-import scala.concurrent.duration._
 
 
 /**

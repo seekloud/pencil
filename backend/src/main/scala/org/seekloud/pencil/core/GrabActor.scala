@@ -1,7 +1,7 @@
 package org.seekloud.pencil.core
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
-import akka.actor.typed.{ActorRef, Behavior, DispatcherSelector, PostStop, Props, Signal, SupervisorStrategy}
+import akka.actor.typed.{ActorRef, Behavior, PostStop, Signal}
 import org.bytedeco.javacv.{FFmpegFrameGrabber, Frame}
 import org.seekloud.pencil.Boot
 import org.seekloud.pencil.core.GrabActor.{GrabCommand, GrabEvent}
@@ -16,7 +16,6 @@ import scala.util.{Failure, Success, Try}
 object GrabActor {
 
   def apply(
-    context: ActorContext[GrabCommand],
     targetPath: String,
     frameCollector: ActorRef[GrabEvent]
   ): Behavior[GrabCommand] = Behaviors.setup[GrabCommand] { context =>
