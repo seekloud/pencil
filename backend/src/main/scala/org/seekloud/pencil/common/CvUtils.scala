@@ -4,7 +4,7 @@ import java.io.File
 import java.nio.ByteBuffer
 
 import opencv_cookbook.OpenCVUtils
-import org.bytedeco.javacv.Frame
+import org.bytedeco.javacv.{Frame, OpenCVFrameConverter}
 import org.bytedeco.opencv.opencv_core.{Mat, Point, Scalar, Size}
 import org.bytedeco.opencv.global.{opencv_imgproc => OpenCvImgProc}
 import org.bytedeco.opencv.opencv_core
@@ -118,7 +118,9 @@ object CvUtils {
 
 
   def main(args: Array[String]): Unit = {
-    testResize()
+//    testDrawRectangle()
+//    testResize()
+    testImgFormatChange()
   }
 
 
@@ -133,6 +135,19 @@ object CvUtils {
     val dstImg = new Mat()
     resize(img, dstImg, 400, 300)
     OpenCVUtils.show(dstImg, "testResize")
+  }
+
+  def testImgFormatChange(): Unit = {
+    val matImage: Mat = OpenCVUtils.loadOrExit(new File("data/image/image01.jpg"))
+
+    OpenCVUtils.show(matImage, "in pic")
+
+    val converter = new OpenCVFrameConverter.ToMat()
+
+    val frame: Frame = converter.convert(matImage)
+
+    val matImage2: Mat = converter.convert(frame)
+    OpenCVUtils.show(matImage2, "out pic")
   }
 
 }
