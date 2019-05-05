@@ -139,13 +139,9 @@ object CvUtils {
 
   def testImgFormatChange(): Unit = {
     val matImage: Mat = OpenCVUtils.loadOrExit(new File("data/image/image01.jpg"))
-
     OpenCVUtils.show(matImage, "in pic")
-
     val converter = new OpenCVFrameConverter.ToMat()
-
     val frame: Frame = converter.convert(matImage)
-
     val matImage2: Mat = converter.convert(frame)
     OpenCVUtils.show(matImage2, "out pic")
   }
