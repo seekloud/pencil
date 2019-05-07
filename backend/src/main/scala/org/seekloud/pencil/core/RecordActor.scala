@@ -24,7 +24,7 @@ object RecordActor {
     height: Int,
     audioChannels: Int,
     pixelFormat: Int = FFmpegAvUtil.AV_PIX_FMT_BGR24,
-    frameRate: Int = 30,
+    frameRate: Double = 30.0,
     videoBitrate: Int = 1500000,
     videoCodec: Int = FFmpegAvCodec.AV_CODEC_ID_H264
   ): Behavior[RecordCommand] = Behaviors.setup[RecordCommand] { context =>
@@ -138,6 +138,7 @@ class RecordActor(
 
   })
 
+  recordThread.start()
 
   override def onMessage(msg: RecordCommand): Behavior[RecordCommand] = {
     msg match {

@@ -4,6 +4,8 @@ import akka.actor.ActorSystem
 import akka.actor.typed.DispatcherSelector
 import akka.dispatch.MessageDispatcher
 
+import scala.concurrent.Future
+
 /**
   * Author: Tao Zhang
   * Date: 4/29/2019
@@ -17,11 +19,12 @@ object Boot {
 
   implicit val executor: MessageDispatcher = system.dispatchers.lookup("akka.actor.my-blocking-dispatcher")
 
-  val blockingDispatcher: DispatcherSelector = DispatcherSelector.fromConfig("my-blocking-dispatcher")
+  val blockingDispatcher: DispatcherSelector = DispatcherSelector.fromConfig("akka.actor.my-blocking-dispatcher")
 
 
   def main(args: Array[String]): Unit = {
     //println("hello world.")
+
 
 
     val b = 192.toByte
